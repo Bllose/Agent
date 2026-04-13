@@ -1,0 +1,21 @@
+[project]
+name = "agent"
+version = "0.1.0"
+description = "AI Agent Project for software engineering tasks"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "anthropic>=0.45.0",
+    "python-dotenv>=1.0.0",
+    "anthropic"
+]
+
+[project.scripts]
+agent = "src.cli.main:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
