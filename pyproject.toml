@@ -7,7 +7,11 @@ requires-python = ">=3.10"
 dependencies = [
     "anthropic>=0.45.0",
     "python-dotenv>=1.0.0",
-    "anthropic"
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0.0",
 ]
 
 [project.scripts]

@@ -1,9 +1,12 @@
 import os
 import json
+import datetime
+import platform
 from anthropic import Anthropic
 
 from src.tools import get_all_tools, execute_tool
 
+DYNAMIC_BOUNDARY = "=== DYNAMIC_BOUNDARY ==="
 
 class Agent:
     """Main Agent class for managing conversations and tool execution."""
@@ -50,6 +53,7 @@ class Agent:
         self.max_tokens = max_tokens
 
         # Load system prompt
+        self.workplace = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
         self.system_prompt = self._load_system_prompt()
         self.messages = []
 
@@ -59,15 +63,31 @@ class Agent:
     def _load_system_prompt(self) -> str:
         """Load the system prompt from templates."""
         template_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+            self.workplace,
             "templates",
             "system.md"
         )
+
+        system_prompt_list = []
+
         try:
             with open(template_path, 'r', encoding='utf-8') as f:
-                return f.read()
+                system_prompt_list.append(f.read())
         except FileNotFoundError:
             return "You are an AI Agent designed to help users with software engineering tasks."
+        
+        system_prompt_list.append(DYNAMIC_BOUNDARY)
+        system_prompt_list.append(self._build_dynamic_context())
+
+        return "\n".join(system_prompt_list)
+
+    def _build_dynamic_context(self) -> str:
+        lines = [
+            f"Current date: {datetime.date.today().isoformat()}",
+            f"Working directory: {self.workplace}",
+            f"Platform: {platform.platform()}",
+        ]
+        return "# Dynamic context\n" + "\n".join(lines)
 
     def reset_conversation(self):
         """Reset the conversation history."""
