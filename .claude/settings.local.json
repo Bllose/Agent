@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python tests/core/foundation_function_test.py)"
+      "Bash(python tests/core/foundation_function_test.py)",
+      "Bash(conda run:*)",
+      "Bash(D:/etc/miniconda3/envs/agent/python.exe -m pytest tests/core/foundation_function_test.py::test_bash_security_block -v)",
+      "Bash(D:/etc/miniconda3/envs/agent/python.exe -m pytest tests/core/foundation_function_test.py::test_bash_security_block -v -s)"
     ]
   }
 }

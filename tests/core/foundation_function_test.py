@@ -17,6 +17,7 @@ if sys.platform == 'win32':
 
 from src.core.agent import Agent
 from src.tools.file import read_file
+from src.tools.bash import bash, _check_command_safety
 
 # 测试文件路径
 TEST_FILE = os.path.join(os.getcwd(), "test_foundation_temp.txt")
@@ -164,3 +165,137 @@ def test_agent_delete_file(agent):
     assert not os.path.exists(TEST_FILE), f"文件仍然存在: {TEST_FILE}"
     print("✓ 文件已删除")
     print("✅ 测试3通过")
+
+
+def test_bash_security_block():
+    """
+    测试4：验证 bash 工具的安全防护功能
+    验证：
+    1. 危险命令被正确拦截
+    2. 返回适当的错误信息
+    注意：此测试直接调用拦截逻辑，不执行危险命令
+    """
+    print("\n=== 测试4：Bash 安全防护测试 ===")
+
+    # 根据操作系统定义不同的危险命令列表
+    if sys.platform == 'win32':
+        dangerous_commands = [
+            ("rmdir /s /q C:\\", "删除目录"),
+            ("del C:\\*", "删除所有文件"),
+            ("format C:", "格式化磁盘"),
+            ("shutdown /r /t 0", "系统重启"),
+            ("shutdown /s /t 0", "系统关机"),
+        ]
+    else:  # Unix-like systems (Linux, macOS)
+        dangerous_commands = [
+            ("rm -rf /", "删除根目录"),
+            ("rm -rf *", "删除所有文件"),
+            ("rm -rf *", "递归删除"),
+            ("mkfs /dev/sda1", "格式化文件系统"),
+            ("dd if=/dev/zero of=/dev/sda", "磁盘写入"),
+            ("reboot", "系统重启"),
+            ("shutdown now", "系统关机"),
+            ("shutdown -h now", "立即关机"),
+            ("poweroff", "关闭电源"),
+            ("halt", "停止系统"),
+            ("init 0", "运行级别0"),
+            ("systemctl stop sshd", "停止服务"),
+            ("service sshd stop", "停止服务"),
+            ("systemctl disable sshd", "禁用服务"),
+            ("nmap localhost", "网络扫描"),
+            ("netcat -l 8080", "Netcat监听"),
+            ("nc -l 8080", "Netcat监听简写"),
+            ("killall python", "杀死所有进程"),
+            ("kill -9 -1", "杀死所有PID"),
+            ("userdel testuser", "删除用户"),
+            ("groupdel testgroup", "删除组"),
+            ("passwd root", "修改密码"),
+            ("grub-install /dev/sda", "安装GRUB"),
+            (":(){ :|:& };:", "Fork炸弹"),
+            ("while true; do :|:& done", "Fork炸弹模式"),
+            ("miner -o stratum+tcp://pool:3333", "挖矿程序"),
+        ]
+
+    blocked_count = 0
+    total_count = len(dangerous_commands)
+
+    for command, description in dangerous_commands:
+        print(f"测试拦截: {description} (命令: {command[:50]}...)")
+
+        # 直接测试拦截逻辑，不执行危险命令
+        is_safe, error_msg = _check_command_safety(command)
+
+        # 验证命令被标记为不安全
+        assert not is_safe, (
+            f"危险命令未被标记为不安全: {command}"
+        )
+
+        # 验证返回了错误信息
+        assert error_msg is not None, (
+            f"未返回错误信息: {command}"
+        )
+
+        # 验证错误信息包含"blocked"关键词
+        assert 'blocked' in error_msg.lower(), (
+            f"错误信息不包含'blocked': {error_msg}\n"
+            f"命令: {command}"
+        )
+
+        blocked_count += 1
+        print(f"  ✓ 已成功拦截")
+
+    print(f"\n✓ 成功拦截 {blocked_count}/{total_count} 个危险命令")
+    print("✅ 测试4通过")
+
+
+def test_bash_safe_commands_allowed():
+    """
+    测试5：验证安全的 bash 命令通过安全检查
+    验证：
+    1. 安全命令通过拦截逻辑
+    2. 拦截逻辑返回正确结果
+    注意：此测试直接调用拦截逻辑，不执行命令
+    """
+    print("\n=== 测试5：安全命令允许执行测试 ===")
+
+    # 根据操作系统定义不同的安全命令列表
+    if sys.platform == 'win32':
+        safe_commands = [
+            ("echo hello", "hello"),
+            ("dir", ""),
+            ("type tests\\conftest.py", "pytest"),
+        ]
+    else:  # Unix-like systems (Linux, macOS)
+        safe_commands = [
+            ("echo hello", "hello"),
+            ("pwd", ""),
+            ("ls tests", "conftest"),
+            ("cat tests/conftest.py", "pytest"),
+        ]
+
+    success_count = 0
+    total_count = len(safe_commands)
+
+    for command, _ in safe_commands:
+        print(f"测试允许: {command[:50]}...")
+
+        # 直接测试拦截逻辑，不执行命令
+        is_safe, error_msg = _check_command_safety(command)
+
+        # 验证命令被标记为安全
+        assert is_safe, (
+            f"安全命令被错误拦截: {command}\n"
+            f"错误信息: {error_msg}"
+        )
+
+        # 验证没有错误信息
+        assert error_msg is None, (
+            f"安全命令返回了错误信息: {error_msg}\n"
+            f"命令: {command}"
+        )
+
+        success_count += 1
+        print(f"  ✓ 命令通过安全检查")
+
+    print(f"\n✓ 成功通过 {success_count}/{total_count} 个安全命令")
+    print("✅ 测试5通过")
