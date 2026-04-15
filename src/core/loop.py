@@ -8,7 +8,6 @@ class AgentLoop:
     def __init__(self, agent: Agent):
         """
         Initialize the Agent Loop.
-
         Args:
             agent: The Agent instance to use
         """
@@ -42,7 +41,23 @@ class AgentLoop:
                     print("Goodbye!")
                     break
 
+                # Check for special commands
+                if user_input.lower() == 'status':
+                    self._show_status()
+                    continue
+
+                if user_input.lower() == 'clear':
+                    self.agent.reset_conversation()
+                    print("Conversation history cleared.")
+                    continue
+
+                if user_input.lower() == 'todos':
+                    todos = self.agent.get_current_todo_status()
+                    print(todos)
+                    continue
+
                 # Process the message
+                print("\nProcessing...")
                 response = self.agent.process_message(user_input)
 
                 # Display response
@@ -58,3 +73,21 @@ class AgentLoop:
                 self.retry_count += 1
                 self.is_retrying = True
                 user_input = "上个步骤执行异常，异常信息: " + str(e) + "，请重新执行上个步骤，注意修正错误。"
+
+    def _show_status(self):
+        """显示当前 Agent 状态"""
+        print("\n=== Agent Status ===")
+        print(f"Message count: {len(self.agent.messages)}")
+        print(f"Todo tasks: {len(self.agent.todo_tasks)}")
+        
+        if self.agent.todo_tasks:
+            print("\nTodo Tasks:")
+            for task in self.agent.todo_tasks:
+                status_emoji = {
+                    'pending': '⬜',
+                    'in_progress': '🔄',
+                    'completed': '✅'
+                }.get(task.get('status', 'pending'), '⬜')
+                print(f"  {status_emoji} [{task['id']}] {task['content']}")
+        
+        print("=" * 30)

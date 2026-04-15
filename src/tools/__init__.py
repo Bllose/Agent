@@ -1,4 +1,5 @@
 from . import file, bash, todo
+from . import sub_agent
 
 
 def get_all_tools():
@@ -198,17 +199,36 @@ def get_all_tools():
                 },
                 "required": ["task_id"]
             }
+        },
+        {
+            "name": "sub_agent",
+            "description": "Delegate a subtask to a SubAgent for independent execution. Use this when you identify a task that can be handled separately.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "task": {
+                        "type": "string",
+                        "description": "The subtask to be executed by the SubAgent"
+                    },
+                    "context": {
+                        "type": "string",
+                        "description": "Additional context information for the subtask (optional)"
+                    }
+                },
+                "required": ["task"]
+            }
         }
     ]
 
 
-def execute_tool(tool_name: str, tool_input: dict) -> dict:
+def execute_tool(tool_name: str, tool_input: dict, parent_agent=None) -> dict:
     """
     Execute a tool by name with given input.
 
     Args:
         tool_name: Name of the tool to execute
         tool_input: Input parameters for the tool
+        parent_agent: Parent Agent instance (required for sub_agent)
 
     Returns:
         dict with tool execution result
@@ -237,6 +257,9 @@ def execute_tool(tool_name: str, tool_input: dict) -> dict:
         return todo.todo_reset_retry(**tool_input)
     elif tool_name == "todo_status":
         return todo.todo_status(**tool_input)
+    elif tool_name == "sub_agent":
+        # sub_agent 需要 parent_agent 参数，在 Agent 中特殊处理
+        return sub_agent.sub_agent(**tool_input, parent_agent=parent_agent)
     else:
         return {
             "success": False,

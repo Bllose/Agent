@@ -5,6 +5,7 @@ import platform
 from anthropic import Anthropic
 
 from src.tools import get_all_tools, execute_tool
+from src.tools.sub_agent import sub_agent
 
 DYNAMIC_BOUNDARY = "=== DYNAMIC_BOUNDARY ==="
 SYSTEM_PROMPT_TEMPLATE = ""
@@ -239,10 +240,51 @@ class Agent:
         # Run the agent loop until no more tool use
         return self._run_agent_loop()
 
+    def _handle_sub_agent_call(self, tool_input: dict) -> dict:
+        """
+        处理 SubAgent 工具调用
+
+        Args:
+            tool_input: sub_agent 工具的输入参数
+
+        Returns:
+            dict: SubAgent 执行结果
+        """
+        try:
+            task = tool_input.get('task')
+            context = tool_input.get('context')
+
+            if not task:
+                return {
+                    "success": False,
+                    "error": "task parameter is required for sub_agent"
+                }
+
+            print(f"[SubAgent] 启动子任务: {task[:50]}...")
+
+            # 调用 sub_agent 函数
+            result = sub_agent(
+                task=task,
+                context=context,
+                parent_agent=self
+            )
+
+            if result.get('success'):
+                print(f"[SubAgent] 子任务完成")
+            else:
+                print(f"[SubAgent] 子任务失败: {result.get('error')}")
+
+            return result
+
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"SubAgent execution failed: {str(e)}"
+            }
+
     def _run_agent_loop(self) -> str:
         """
         Run the agent loop: request model, handle tools, repeat until done.
-
         Returns:
             The final text response from the model
         """
@@ -266,8 +308,13 @@ class Agent:
             for block in response.content:
                 if block.type == "tool_use":
                     has_tool_use = True
-                    # Execute tool
-                    tool_result = execute_tool(block.name, block.input)
+
+                    # 特殊处理 SubAgent 调用
+                    if block.name == "sub_agent":
+                        tool_result = self._handle_sub_agent_call(block.input)
+                    else:
+                        # Execute tool
+                        tool_result = execute_tool(block.name, block.input)
 
                     # 如果是 todo_create，将任务保存到 Agent 的 todo_tasks 中
                     if block.name == "todo_create" and tool_result.get('success'):
