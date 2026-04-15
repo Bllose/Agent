@@ -7,6 +7,7 @@ from anthropic import Anthropic
 from src.tools import get_all_tools, execute_tool
 
 DYNAMIC_BOUNDARY = "=== DYNAMIC_BOUNDARY ==="
+SYSTEM_PROMPT_TEMPLATE = ""
 
 class Agent:
     """Main Agent class for managing conversations and tool execution."""
@@ -64,6 +65,27 @@ class Agent:
         self.todo_tasks = []
         self.current_todo_task = None
 
+    def _build_system_prompt(self) -> str:
+        global SYSTEM_PROMPT_TEMPLATE
+
+        """Load the system prompt from templates."""
+        template_path = os.path.join(
+            self.workplace,
+            "templates",
+            "system.md"
+        )
+
+        try:
+            with open(template_path, 'r', encoding='utf-8') as f:
+                SYSTEM_PROMPT_TEMPLATE = f.read()
+        except FileNotFoundError:
+            return "You are an AI Agent designed to help users with software engineering tasks."
+        
+        if not SYSTEM_PROMPT_TEMPLATE:
+             SYSTEM_PROMPT_TEMPLATE = "You are an AI Agent designed to help users with software engineering tasks."
+
+        return SYSTEM_PROMPT_TEMPLATE
+
     def _build_system_prompt_with_todo(self) -> str:
         """
         构建包含 todo 任务状态的 system prompt
@@ -73,18 +95,9 @@ class Agent:
         """
         system_prompt_list = []
 
-        # 加载基础 system prompt
-        template_path = os.path.join(
-            self.workplace,
-            "templates",
-            "system.md"
-        )
-
-        try:
-            with open(template_path, 'r', encoding='utf-8') as f:
-                system_prompt_list.append(f.read())
-        except FileNotFoundError:
-            system_prompt_list.append("You are an AI Agent designed to help users with software engineering tasks.")
+        if not SYSTEM_PROMPT_TEMPLATE:
+            self._build_system_prompt()
+        system_prompt_list.append(SYSTEM_PROMPT_TEMPLATE)
 
         # 添加 todo 任务状态（如果有任务）
         if self.todo_tasks:
