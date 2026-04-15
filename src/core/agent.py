@@ -60,6 +60,46 @@ class Agent:
         # Cache tool definitions
         self.tools = get_all_tools()
 
+        # Todo 任务管理
+        self.todo_tasks = []
+        self.current_todo_task = None
+
+    def _build_system_prompt_with_todo(self) -> str:
+        """
+        构建包含 todo 任务状态的 system prompt
+
+        Returns:
+            str: 完整的 system prompt
+        """
+        system_prompt_list = []
+
+        # 加载基础 system prompt
+        template_path = os.path.join(
+            self.workplace,
+            "templates",
+            "system.md"
+        )
+
+        try:
+            with open(template_path, 'r', encoding='utf-8') as f:
+                system_prompt_list.append(f.read())
+        except FileNotFoundError:
+            system_prompt_list.append("You are an AI Agent designed to help users with software engineering tasks.")
+
+        # 添加 todo 任务状态（如果有任务）
+        if self.todo_tasks:
+            system_prompt_list.append("\n")
+            system_prompt_list.append(DYNAMIC_BOUNDARY)
+            system_prompt_list.append("\n")
+            system_prompt_list.append(self.get_current_todo_status())
+
+        # 添加动态上下文
+        system_prompt_list.append("\n")
+        system_prompt_list.append(DYNAMIC_BOUNDARY)
+        system_prompt_list.append(self._build_dynamic_context())
+
+        return "\n".join(system_prompt_list)
+
     def _load_system_prompt(self) -> str:
         """Load the system prompt from templates."""
         template_path = os.path.join(
@@ -93,6 +133,71 @@ class Agent:
         """Reset the conversation history."""
         self.messages = []
 
+    def clear_todo_tasks(self):
+        """清除所有 todo 任务"""
+        self.todo_tasks = []
+        self.current_todo_task = None
+
+    def get_current_todo_status(self) -> str:
+        """
+        获取当前 todo 任务状态
+
+        Returns:
+            str: todo 任务状态的格式化字符串
+        """
+        if not self.todo_tasks:
+            return "当前没有活跃的任务计划"
+
+        # 统计任务状态
+        pending = sum(1 for t in self.todo_tasks if t.get('status') == 'pending')
+        in_progress = sum(1 for t in self.todo_tasks if t.get('status') == 'in_progress')
+        completed = sum(1 for t in self.todo_tasks if t.get('status') == 'completed')
+        total = len(self.todo_tasks)
+
+        status_lines = [
+            f"## 当前进度",
+            f"总计: {total} 个任务 | 完成: {completed} | 进行中: {in_progress} | 待处理: {pending}",
+            ""
+        ]
+
+        # 显示下一个待处理的任务
+        next_task = None
+        for task in self.todo_tasks:
+            if task.get('status') in ['pending', 'in_progress']:
+                next_task = task
+                break
+
+        if next_task:
+            status_lines.append(f"**当前应该完成的任务:**")
+            status_lines.append(f"- 任务 ID {next_task['id']}: {next_task['content']}")
+            status_lines.append(f"  状态: {next_task['status']}")
+            status_lines.append("")
+
+        # 显示任务列表
+        status_lines.append("**任务列表:**")
+        for task in self.todo_tasks:
+            status_emoji = {
+                'pending': '⬜',
+                'in_progress': '🔄',
+                'completed': '✅'
+            }.get(task.get('status', 'pending'), '⬜')
+
+            status_lines.append(f"{status_emoji} 任务 {task['id']}: {task['content']}")
+
+        return "\n".join(status_lines)
+
+    def get_next_todo_task(self) -> dict:
+        """
+        获取下一个待处理的 todo 任务
+
+        Returns:
+            dict: 下一个任务的信息，如果没有则返回 None
+        """
+        for task in self.todo_tasks:
+            if task.get('status') in ['pending', 'in_progress']:
+                return task
+        return None
+
     def process_message(self, user_message: str) -> str:
         """
         Process a user message and return the Agent's response.
@@ -120,10 +225,13 @@ class Agent:
             The final text response from the model
         """
         while True:
+            # 构建包含 todo 任务的 system prompt
+            system_prompt = self._build_system_prompt_with_todo()
+
             # Call Anthropic API
             response = self.client.messages.create(
                 model=self.model,
-                system=self.system_prompt,
+                system=system_prompt,
                 messages=self.messages,
                 tools=self.tools,
                 max_tokens=self.max_tokens
@@ -138,6 +246,26 @@ class Agent:
                     has_tool_use = True
                     # Execute tool
                     tool_result = execute_tool(block.name, block.input)
+
+                    # 如果是 todo_create，将任务保存到 Agent 的 todo_tasks 中
+                    if block.name == "todo_create" and tool_result.get('success'):
+                        tasks = tool_result.get('tasks', [])
+                        self.todo_tasks.extend(tasks)
+                        print(f"[TODO] 已将 {len(tasks)} 个任务添加到计划中")
+
+                    # 如果是 todo_update，更新 Agent 内存中的任务状态
+                    if block.name == "todo_update" and tool_result.get('success'):
+                        task_id = block.input.get('task_id')
+                        if 'status' in block.input:
+                            new_status = block.input['status']
+                            # 更新内存中的任务状态
+                            for task in self.todo_tasks:
+                                if task.get('id') == task_id:
+                                    old_status = task.get('status')
+                                    task['status'] = new_status
+                                    print(f"[TODO] 任务 {task_id} 状态从 {old_status} 更新为 {new_status}")
+                                    break
+
                     # Convert result dict to JSON string for the API
                     tool_results.append({
                         "tool_use_id": block.id,

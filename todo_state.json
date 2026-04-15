@@ -1,0 +1,52 @@
+{
+  "tasks": [
+    {
+      "id": 1,
+      "content": "查看当前项目的变动文件，了解todo功能的概要",
+      "status": "completed",
+      "activeForm": "查看项目变动文件",
+      "created_at": "2026-04-15T14:44:41.104041",
+      "updated_at": "2026-04-15T14:45:40.139952"
+    },
+    {
+      "id": 2,
+      "content": "执行 git add . 添加所有变动",
+      "status": "in_progress",
+      "activeForm": "添加文件变动",
+      "created_at": "2026-04-15T14:44:41.104041",
+      "updated_at": "2026-04-15T14:45:52.455989"
+    },
+    {
+      "id": 3,
+      "content": "根据文件信息生成提交说明并执行 git commit",
+      "status": "pending",
+      "activeForm": "提交执行 git commit",
+      "created_at": "2026-04-15T14:44:41.104041",
+      "updated_at": "2026-04-15T14:44:41.104041"
+    },
+    {
+      "id": 4,
+      "content": "执行 git push origin HEAD 推送到github",
+      "status": "pending",
+      "activeForm": "推送到github仓库",
+      "created_at": "2026-04-15T14:44:41.104041",
+      "updated_at": "2026-04-15T14:44:41.104041"
+    },
+    {
+      "id": 5,
+      "content": "执行 git push gitee HEAD 推送到gitee",
+      "status": "pending",
+      "activeForm": "推送到gitee仓库",
+      "created_at": "2026-04-15T14:44:41.104041",
+      "updated_at": "2026-04-15T14:44:41.104041"
+    }
+  ],
+  "current_index": 0,
+  "retry_counts": {
+    "1": 0,
+    "2": 0,
+    "3": 0,
+    "4": 0,
+    "5": 0
+  }
+}
