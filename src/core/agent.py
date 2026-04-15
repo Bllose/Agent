@@ -6,6 +6,7 @@ from anthropic import Anthropic
 
 from src.tools import get_all_tools, execute_tool
 from src.tools.sub_agent import sub_agent
+from src.core.logger import get_logger
 
 DYNAMIC_BOUNDARY = "=== DYNAMIC_BOUNDARY ==="
 SYSTEM_PROMPT_TEMPLATE = ""
@@ -29,11 +30,14 @@ class Agent:
             model: Model to use for generation (defaults to MODEL env var)
             max_tokens: Maximum tokens for responses (defaults to MAX_TOKENS env var)
         """
+        self.logger = get_logger('agent')
+
         # Get configuration from environment variables if not provided
         if api_key is None:
             api_key = os.environ.get("ANTHROPIC_API_KEY")
 
         if not api_key:
+            self.logger.error("ANTHROPIC_API_KEY environment variable is not set")
             raise ValueError(
                 "ANTHROPIC_API_KEY environment variable is not set. "
                 "Please set it in .env file or environment."
@@ -65,6 +69,8 @@ class Agent:
         # Todo 任务管理
         self.todo_tasks = []
         self.current_todo_task = None
+
+        self.logger.info(f"Agent initialized with model: {model}, max_tokens: {max_tokens}")
 
     def save_state(self):
         """Save the Agent's state to a file."""
@@ -255,12 +261,13 @@ class Agent:
             context = tool_input.get('context')
 
             if not task:
+                self.logger.error("sub_agent task parameter is required")
                 return {
                     "success": False,
                     "error": "task parameter is required for sub_agent"
                 }
 
-            print(f"[SubAgent] 启动子任务: {task[:50]}...")
+            self.logger.info(f"Starting sub-agent task: {task[:50]}...")
 
             # 调用 sub_agent 函数
             result = sub_agent(
@@ -270,13 +277,14 @@ class Agent:
             )
 
             if result.get('success'):
-                print(f"[SubAgent] 子任务完成")
+                self.logger.info("Sub-agent task completed successfully")
             else:
-                print(f"[SubAgent] 子任务失败: {result.get('error')}")
+                self.logger.error(f"Sub-agent task failed: {result.get('error')}")
 
             return result
 
         except Exception as e:
+            self.logger.error(f"Sub-agent execution exception: {str(e)}", exc_info=True)
             return {
                 "success": False,
                 "error": f"SubAgent execution failed: {str(e)}"
@@ -320,7 +328,7 @@ class Agent:
                     if block.name == "todo_create" and tool_result.get('success'):
                         tasks = tool_result.get('tasks', [])
                         self.todo_tasks.extend(tasks)
-                        print(f"[TODO] 已将 {len(tasks)} 个任务添加到计划中")
+                        self.logger.info(f"Added {len(tasks)} tasks to todo plan")
 
                     # 如果是 todo_update，更新 Agent 内存中的任务状态
                     if block.name == "todo_update" and tool_result.get('success'):
@@ -332,7 +340,7 @@ class Agent:
                                 if task.get('id') == task_id:
                                     old_status = task.get('status')
                                     task['status'] = new_status
-                                    print(f"[TODO] 任务 {task_id} 状态从 {old_status} 更新为 {new_status}")
+                                    self.logger.info(f"Task {task_id} status updated from {old_status} to {new_status}")
                                     break
 
                     # Convert result dict to JSON string for the API
@@ -340,6 +348,10 @@ class Agent:
                         "tool_use_id": block.id,
                         "content": json.dumps(tool_result, ensure_ascii=False)
                     })
+                elif block.type == "text":
+                    # 处理文本块，继续循环直到没有工具调用
+                    text_first_line = block.text.strip().splitlines()[0] if block.text.strip() else ""
+                    self.logger.info(f"Received text block: {text_first_line} ...")
 
             # Add assistant response to history
             self.messages.append({

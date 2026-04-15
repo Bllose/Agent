@@ -1,4 +1,5 @@
 from .agent import Agent
+from .logger import get_logger
 
 MAX_RETRY = 3
 
@@ -14,9 +15,11 @@ class AgentLoop:
         self.agent = agent
         self.retry_count = 0
         self.is_retrying = False
+        self.logger = get_logger('agent.loop')
 
     def start(self):
         """Start the interactive loop."""
+        self.logger.info("Agent Loop started. Type 'exit' or 'quit' to leave.")
         print("Agent Loop started. Type 'exit' or 'quit' to leave.")
         print("-" * 50)
 
@@ -24,10 +27,11 @@ class AgentLoop:
             try:
                 if self.retry_count >= MAX_RETRY:
                     self.agent.save_state()
+                    self.logger.error("Maximum retry limit reached. State saved. Exiting.")
                     print("Maximum retry limit reached. State saved. Exiting.")
                     break
 
-                # Get user input    
+                # Get user input
                 if not self.is_retrying:
                     user_input = input(">>> ").strip()
                 else:
@@ -38,6 +42,7 @@ class AgentLoop:
 
                 # Check for exit commands
                 if user_input.lower() in ['exit', 'quit']:
+                    self.logger.info("User requested exit")
                     print("Goodbye!")
                     break
 
@@ -48,6 +53,7 @@ class AgentLoop:
 
                 if user_input.lower() == 'clear':
                     self.agent.reset_conversation()
+                    self.logger.info("Conversation history cleared")
                     print("Conversation history cleared.")
                     continue
 
@@ -57,6 +63,7 @@ class AgentLoop:
                     continue
 
                 # Process the message
+                self.logger.info(f"Processing user message: {user_input[:50]}...")
                 print("\nProcessing...")
                 response = self.agent.process_message(user_input)
 
@@ -65,21 +72,21 @@ class AgentLoop:
                 print("-" * 50)
 
             except KeyboardInterrupt:
+                self.logger.info("KeyboardInterrupt received")
                 print("\nUse 'exit' or 'quit' to leave.")
-            except EOFError:
-                print("\nGoodbye!")
-                break
             except Exception as e:
+                self.logger.error(f"Error processing message: {str(e)}", exc_info=True)
                 self.retry_count += 1
                 self.is_retrying = True
                 user_input = "上个步骤执行异常，异常信息: " + str(e) + "，请重新执行上个步骤，注意修正错误。"
 
     def _show_status(self):
         """显示当前 Agent 状态"""
+        self.logger.info(f"Agent Status: Messages={len(self.agent.messages)}, Todos={len(self.agent.todo_tasks)}")
         print("\n=== Agent Status ===")
         print(f"Message count: {len(self.agent.messages)}")
         print(f"Todo tasks: {len(self.agent.todo_tasks)}")
-        
+
         if self.agent.todo_tasks:
             print("\nTodo Tasks:")
             for task in self.agent.todo_tasks:
@@ -89,5 +96,5 @@ class AgentLoop:
                     'completed': '✅'
                 }.get(task.get('status', 'pending'), '⬜')
                 print(f"  {status_emoji} [{task['id']}] {task['content']}")
-        
+
         print("=" * 30)

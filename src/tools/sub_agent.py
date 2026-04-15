@@ -5,12 +5,15 @@ SubAgent 工具模块
 """
 import os
 from anthropic import Anthropic
+from src.core.logger import get_logger
+
+logger = get_logger('agent.tools.sub_agent')
 
 
 class SubAgent:
     """
     SubAgent 类，用于执行独立的子任务。
-    
+
     SubAgent 是一个轻量级的 Agent 实例，专门用于处理特定的子任务。
     它拥有独立的上下文和消息历史，执行完毕后将结果返回给主 Agent。
     """
@@ -24,7 +27,7 @@ class SubAgent:
     ):
         """
         初始化 SubAgent
-        
+
         Args:
             task: 要执行的子任务描述
             parent_agent_config: 主 Agent 的配置（api_key, base_url, model, max_tokens）
@@ -33,7 +36,7 @@ class SubAgent:
         """
         self.task = task
         self.context = context or ""
-        
+
         # 使用主 Agent 的配置
         self.client = Anthropic(
             api_key=parent_agent_config.get('api_key'),
@@ -42,18 +45,20 @@ class SubAgent:
         self.model = parent_agent_config.get('model')
         self.max_tokens = parent_agent_config.get('max_tokens')
         self.workplace = parent_agent_config.get('workplace')
-        
+
         # 独立的消息历史
         self.messages = []
-        
+
         # 构建系统提示
         self.system_prompt = self._build_system_prompt()
-        
+
         # 可用工具
         self.tools = tools or []
-        
+
         # 执行结果
         self.result = None
+
+        logger.info(f"SubAgent initialized for task: {task[:50]}...")
         
     def _build_system_prompt(self) -> str:
         """
@@ -95,7 +100,7 @@ class SubAgent:
     def execute(self) -> dict:
         """
         执行子任务
-        
+
         Returns:
             dict: 包含执行结果的字典
                 - success: bool 是否成功
@@ -105,13 +110,14 @@ class SubAgent:
                 - messages: str 完整的消息历史
                 - error: str 错误信息（如果失败）
         """
+        logger.info(f"Executing subtask: {self.task[:50]}...")
         try:
             # 添加任务到消息历史
             self.messages.append({
                 "role": "user",
                 "content": f"请完成以下任务：\n\n{self.task}"
             })
-            
+
             # 调用模型
             response = self.client.messages.create(
                 model=self.model,
@@ -120,16 +126,17 @@ class SubAgent:
                 tools=self.tools,
                 max_tokens=self.max_tokens
             )
-            
+
             # 处理工具调用
             while True:
                 # 检查是否有工具调用
                 has_tool_use = False
                 tool_results = []
-                
+
                 for block in response.content:
                     if block.type == "tool_use":
                         has_tool_use = True
+                        logger.debug(f"SubAgent tool call: {block.name}")
                         # 这里需要导入 execute_tool 函数
                         from src.tools import execute_tool
                         tool_result = execute_tool(block.name, block.input)
@@ -137,13 +144,13 @@ class SubAgent:
                             "tool_use_id": block.id,
                             "content": str(tool_result)
                         })
-                
+
                 # 添加助手响应到历史
                 self.messages.append({
                     "role": "assistant",
                     "content": response.content
                 })
-                
+
                 # 如果有工具调用，添加结果并继续
                 if has_tool_use:
                     for result in tool_results:
@@ -151,7 +158,7 @@ class SubAgent:
                             "role": "user",
                             "content": result
                         })
-                    
+
                     # 继续对话
                     response = self.client.messages.create(
                         model=self.model,
@@ -161,26 +168,28 @@ class SubAgent:
                         max_tokens=self.max_tokens
                     )
                     continue
-                
+
                 # 没有工具调用，提取最终响应
                 break
-            
+
             # 提取文本输出
             text_output = ""
             for block in response.content:
                 if block.type == "text":
                     text_output += block.text
-            
+
             self.result = {
                 "success": True,
                 "task": self.task,
                 "result": text_output,
                 "message_count": len(self.messages)
             }
-            
+
+            logger.info(f"Subtask completed successfully. {len(self.messages)} messages processed")
             return self.result
-            
+
         except Exception as e:
+            logger.error(f"Subtask execution failed: {str(e)}", exc_info=True)
             self.result = {
                 "success": False,
                 "task": self.task,

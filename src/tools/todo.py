@@ -6,6 +6,9 @@ import json
 import os
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
+from src.core.logger import get_logger
+
+logger = get_logger('agent.tools.todo')
 
 
 # Todo 数据存储文件
@@ -31,8 +34,9 @@ class TodoManager:
                     self.tasks = data.get('tasks', [])
                     self.current_index = data.get('current_index', 0)
                     self.retry_counts = data.get('retry_counts', {})
+                logger.info(f"Loaded todo state: {len(self.tasks)} tasks")
             except Exception as e:
-                print(f"加载 todo 状态失败: {e}")
+                logger.error(f"Failed to load todo state: {e}", exc_info=True)
 
     def save_state(self):
         """保存任务状态到文件"""
@@ -44,8 +48,9 @@ class TodoManager:
                     'current_index': self.current_index,
                     'retry_counts': self.retry_counts
                 }, f, ensure_ascii=False, indent=2)
+            logger.debug("Todo state saved successfully")
         except Exception as e:
-            print(f"保存 todo 状态失败: {e}")
+            logger.error(f"Failed to save todo state: {e}", exc_info=True)
 
     def create_tasks(self, items: List[Dict]) -> Dict:
         """

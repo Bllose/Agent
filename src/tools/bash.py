@@ -1,5 +1,8 @@
 import subprocess
 import re
+from src.core.logger import get_logger
+
+logger = get_logger('agent.tools.bash')
 
 
 def _check_command_safety(command: str) -> tuple[bool, str | None]:
@@ -99,10 +102,12 @@ def _check_command_safety(command: str) -> tuple[bool, str | None]:
     # Check each dangerous pattern
     for pattern, description in dangerous_patterns:
         if re.search(pattern, normalized, re.IGNORECASE):
+            logger.warning(f"Command blocked: {description} (command: {command[:50]}...)")
             return False, description
 
     # Special check for DELETE without WHERE (SQL injection prevention)
     if 'delete' in normalized and 'where' not in normalized and 'from' in normalized:
+        logger.warning("DELETE without WHERE clause blocked")
         return False, 'DELETE command without WHERE clause is blocked'
 
     return True, None
@@ -118,9 +123,11 @@ def bash(command: str) -> dict:
     Returns:
         dict with 'success' (bool), 'output' (str), 'error' (str)
     """
+    logger.info(f"Executing command: {command[:100]}...")
     # Security check before execution
     is_safe, error_msg = _check_command_safety(command)
     if not is_safe:
+        logger.error(f"Command blocked: {error_msg}")
         return {
             "success": False,
             "error": f"Command blocked: {error_msg}"
@@ -132,24 +139,29 @@ def bash(command: str) -> dict:
             shell=True,
             capture_output=True,
             text=True,
-            timeout=30
+            timeout=30,
+            encoding='utf-8',
+            errors='replace'  # 替换无法解码的字符而不是抛出异常
         )
 
         output = result.stdout
         if result.stderr:
             output += f"\n[stderr]\n{result.stderr}"
 
+        logger.info(f"Command completed with return code: {result.returncode}")
         return {
             "success": True,
             "output": output,
             "return_code": result.returncode
         }
     except subprocess.TimeoutExpired:
+        logger.error("Command timed out after 30 seconds")
         return {
             "success": False,
             "error": "Command timed out after 30 seconds"
         }
     except Exception as e:
+        logger.error(f"Error executing command: {str(e)}", exc_info=True)
         return {
             "success": False,
             "error": f"Error executing command: {str(e)}"

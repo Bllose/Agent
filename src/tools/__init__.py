@@ -1,5 +1,8 @@
 from . import file, bash, todo
 from . import sub_agent
+from src.core.logger import get_logger
+
+logger = get_logger('agent.tools')
 
 
 def get_all_tools():
@@ -221,47 +224,57 @@ def get_all_tools():
     ]
 
 
+
 def execute_tool(tool_name: str, tool_input: dict, parent_agent=None) -> dict:
     """
     Execute a tool by name with given input.
 
     Args:
-        tool_name: Name of the tool to execute
-        tool_input: Input parameters for the tool
+        tool_name: Name of tool to execute
+        tool_input: Input parameters for tool
         parent_agent: Parent Agent instance (required for sub_agent)
 
     Returns:
         dict with tool execution result
     """
-    if tool_name == "read_file":
-        return file.read_file(**tool_input)
-    elif tool_name == "write_file":
-        return file.write_file(**tool_input)
-    elif tool_name == "edit_file":
-        return file.edit_file(**tool_input)
-    elif tool_name == "bash":
-        return bash.bash(**tool_input)
-    elif tool_name == "todo_create":
-        return todo.todo_create(**tool_input)
-    elif tool_name == "todo_list":
-        return todo.todo_list(**tool_input)
-    elif tool_name == "todo_next":
-        return todo.todo_next(**tool_input)
-    elif tool_name == "todo_update":
-        return todo.todo_update(**tool_input)
-    elif tool_name == "todo_delete":
-        return todo.todo_delete(**tool_input)
-    elif tool_name == "todo_clear":
-        return todo.todo_clear(**tool_input)
-    elif tool_name == "todo_reset_retry":
-        return todo.todo_reset_retry(**tool_input)
-    elif tool_name == "todo_status":
-        return todo.todo_status(**tool_input)
-    elif tool_name == "sub_agent":
-        # sub_agent 需要 parent_agent 参数，在 Agent 中特殊处理
-        return sub_agent.sub_agent(**tool_input, parent_agent=parent_agent)
-    else:
+    logger.debug(f"Executing tool: {tool_name}")
+    try:
+        if tool_name == "read_file":
+            return file.read_file(**tool_input)
+        elif tool_name == "write_file":
+            return file.write_file(**tool_input)
+        elif tool_name == "edit_file":
+            return file.edit_file(**tool_input)
+        elif tool_name == "bash":
+            return bash.bash(**tool_input)
+        elif tool_name == "todo_create":
+            return todo.todo_create(**tool_input)
+        elif tool_name == "todo_list":
+            return todo.todo_list(**tool_input)
+        elif tool_name == "todo_next":
+            return todo.todo_next(**tool_input)
+        elif tool_name == "todo_update":
+            return todo.todo_update(**tool_input)
+        elif tool_name == "todo_delete":
+            return todo.todo_delete(**tool_input)
+        elif tool_name == "todo_clear":
+            return todo.todo_clear(**tool_input)
+        elif tool_name == "todo_reset_retry":
+            return todo.todo_reset_retry(**tool_input)
+        elif tool_name == "todo_status":
+            return todo.todo_status(**tool_input)
+        elif tool_name == "sub_agent":
+            # sub_agent 需要 parent_agent 参数，在 Agent 中特殊处理
+            return sub_agent.sub_agent(**tool_input, parent_agent=parent_agent)
+        else:
+            logger.error(f"Unknown tool: {tool_name}")
+            return {
+                "success": False,
+                "error": f"Unknown tool: {tool_name}"
+            }
+    except Exception as e:
+        logger.error(f"Tool execution failed: {tool_name} - {str(e)}", exc_info=True)
         return {
             "success": False,
-            "error": f"Unknown tool: {tool_name}"
+            "error": f"Tool execution failed: {str(e)}"
         }
