@@ -143,11 +143,6 @@ Agent/
 | `MODEL` | 使用的模型 | claude-sonnet-4-6 |
 | `MAX_TOKENS` | 响应最大 token 数 | 4096 |
 
-可用模型：
-- `claude-opus-4-6`
-- `claude-sonnet-4-6`
-- `claude-haiku-4-5-20251001`
-
 ## 📝 开发指南
 
 - 使用 Python 3.10+ 开发

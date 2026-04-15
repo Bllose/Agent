@@ -143,11 +143,6 @@ Configure in the `.env` file:
 | `MODEL` | Model to use | claude-sonnet-4-6 |
 | `MAX_TOKENS` | Maximum response tokens | 4096 |
 
-Available models:
-- `claude-opus-4-6`
-- `claude-sonnet-4-6`
-- `claude-haiku-4-5-20251001`
-
 ## 📝 Development Guide
 
 - Develop with Python 3.10+
