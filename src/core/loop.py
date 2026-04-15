@@ -1,5 +1,6 @@
 from .agent import Agent
 
+MAX_RETRY = 3
 
 class AgentLoop:
     """Main Agent Loop for REPL interaction."""
@@ -12,6 +13,8 @@ class AgentLoop:
             agent: The Agent instance to use
         """
         self.agent = agent
+        self.retry_count = 0
+        self.is_retrying = False
 
     def start(self):
         """Start the interactive loop."""
@@ -20,8 +23,16 @@ class AgentLoop:
 
         while True:
             try:
-                # Get user input
-                user_input = input(">>> ").strip()
+                if self.retry_count >= MAX_RETRY:
+                    self.agent.save_state()
+                    print("Maximum retry limit reached. State saved. Exiting.")
+                    break
+
+                # Get user input    
+                if not self.is_retrying:
+                    user_input = input(">>> ").strip()
+                else:
+                    self.is_retrying = False
 
                 if not user_input:
                     continue
@@ -44,5 +55,6 @@ class AgentLoop:
                 print("\nGoodbye!")
                 break
             except Exception as e:
-                print(f"\nError: {str(e)}")
-                print("-" * 50)
+                self.retry_count += 1
+                self.is_retrying = True
+                user_input = "上个步骤执行异常，异常信息: " + str(e) + "，请重新执行上个步骤，注意修正错误。"

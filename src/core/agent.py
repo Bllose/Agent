@@ -65,6 +65,15 @@ class Agent:
         self.todo_tasks = []
         self.current_todo_task = None
 
+    def save_state(self):
+        """Save the Agent's state to a file."""
+        state = {
+            "messages": self.messages,
+            "todo_tasks": self.todo_tasks
+        }
+        with open("agent_state.json", "w", encoding='utf-8') as f:
+            json.dump(state, f, ensure_ascii=False, indent=2)
+
     def _build_system_prompt(self) -> str:
         global SYSTEM_PROMPT_TEMPLATE
 
