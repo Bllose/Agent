@@ -73,16 +73,30 @@ Agent 会自动创建任务计划并逐步执行：
 
 当遇到可独立处理的任务时，Agent 会派生 SubAgent 并行执行：
 
-```
+``` text
 >>> 扫描项目中的安全问题并修复
     - 子任务：静态分析代码漏洞
     - 子任务：检查依赖项安全性
     - 子任务：生成安全报告
 ```
 
-Agent 具备自我进化和优化的能力：
+### 工程化保障
 
-![Agent Self-Improvement](resources/pics/Agent自我进化.png)
+一个合适且准确的提示词  
+
+![prompt](resources/pics/工程化保障提示词.png)
+
+---
+
+任务执行过程中异常重试，高危命令屏蔽  
+
+![error_handler](resources/pics/工程化保障异常处理.png)
+
+---
+
+一口气得到可用功能  
+
+![result](resources/pics/工程化保障结果.png)
 
 ## 🏗️ 项目架构
 

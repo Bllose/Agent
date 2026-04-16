@@ -9,6 +9,7 @@ from anthropic import Anthropic
 from src.tools import get_all_tools, execute_tool
 from src.tools.sub_agent import create_sub_agent, execute_sub_agent
 from src.core.logger import get_logger
+from src.skills import SkillManager
 
 DYNAMIC_BOUNDARY = "=== DYNAMIC_BOUNDARY ==="
 SYSTEM_PROMPT_TEMPLATE = ""
@@ -67,6 +68,9 @@ class Agent:
 
         # Cache tool definitions
         self.tools = get_all_tools()
+
+        # Initialize SKILL manager
+        self.skill_manager = SkillManager(self.workplace)
 
         # Todo 任务管理
         self.todo_tasks = []
@@ -184,7 +188,7 @@ class Agent:
 
     def _build_system_prompt_with_todo(self) -> str:
         """
-        构建包含 todo 任务状态的 system prompt
+        构建包含 todo 任务状态和 SKILL 的 system prompt
 
         Returns:
             str: 完整的 system prompt
@@ -194,6 +198,16 @@ class Agent:
         if not SYSTEM_PROMPT_TEMPLATE:
             self._build_system_prompt()
         system_prompt_list.append(SYSTEM_PROMPT_TEMPLATE)
+
+        # 添加 SKILL 内容（如果有 SKILL）
+        skills_content = self.skill_manager.get_skills_content()
+        if skills_content:
+            system_prompt_list.append("\n")
+            system_prompt_list.append(DYNAMIC_BOUNDARY)
+            system_prompt_list.append("\n")
+            system_prompt_list.append("# Available SKILLs")
+            system_prompt_list.append("\n")
+            system_prompt_list.append(skills_content)
 
         # 添加 todo 任务状态（如果有任务）
         if self.todo_tasks:
