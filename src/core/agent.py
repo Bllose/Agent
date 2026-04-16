@@ -2,10 +2,12 @@ import os
 import json
 import datetime
 import platform
+import uuid
+import traceback
 from anthropic import Anthropic
 
 from src.tools import get_all_tools, execute_tool
-from src.tools.sub_agent import sub_agent
+from src.tools.sub_agent import create_sub_agent, execute_sub_agent
 from src.core.logger import get_logger
 
 DYNAMIC_BOUNDARY = "=== DYNAMIC_BOUNDARY ==="
@@ -70,16 +72,94 @@ class Agent:
         self.todo_tasks = []
         self.current_todo_task = None
 
+        # SubAgent 创建历史表（用于追踪子代理创建）
+        # 格式: [{'subagent_id': str, 'message_index': int, 'task': str, 'created_at': str}]
+        self.subagent_creation_history = []
+
+        # 异常存储（用于状态保留）
+        self.last_exception = None
+
         self.logger.info(f"Agent initialized with model: {model}, max_tokens: {max_tokens}")
 
+    def serialize_messages(self, messages) -> list:
+        """
+        序列化消息对象（处理不能直接序列化的对象）
+
+        Args:
+            messages: 消息列表
+
+        Returns:
+            list: 可序列化的消息列表
+        """
+        serialized = []
+        for msg in messages:
+            if isinstance(msg, dict):
+                serialized_msg = {}
+                for key, value in msg.items():
+                    if key == 'content':
+                        # 处理 content 可能是 TextBlock 或 ToolUseBlock 对象
+                        if hasattr(value, '__iter__') and not isinstance(value, (str, bytes)):
+                            # 这是一个 block 对象列表
+                            content_list = []
+                            for block in value:
+                                if hasattr(block, '__dict__'):
+                                    content_list.append({
+                                        'type': getattr(block, 'type', 'unknown'),
+                                        'text': getattr(block, 'text', ''),
+                                        'input': getattr(block, 'input', {}),
+                                        'id': getattr(block, 'id', ''),
+                                        'name': getattr(block, 'name', '')
+                                    })
+                                else:
+                                    content_list.append(str(block))
+                            serialized_msg[key] = content_list
+                        else:
+                            serialized_msg[key] = value
+                    else:
+                        serialized_msg[key] = value
+                serialized.append(serialized_msg)
+            else:
+                serialized.append(str(msg))
+        return serialized
+
     def save_state(self):
-        """Save the Agent's state to a file."""
+        """
+        保存 Agent 的状态到文件，包括：
+        - Agent 消息历史
+        - Todo 任务状态
+        - 子代理创建历史（用于关联子代理状态文件）
+        - 异常信息（如果存在）
+        - 环境信息
+
+        注意：SubAgent 的状态保存在独立的 sub_agent_{subagent_id}.json 文件中，
+        通过 subagent_creation_history 中的记录进行逻辑关联。
+        """
+        # 构建完整状态
         state = {
-            "messages": self.messages,
-            "todo_tasks": self.todo_tasks
+            'timestamp': datetime.datetime.now().isoformat(),
+            'agent_state': {
+                'messages': self.serialize_messages(self.messages),
+                'todo_tasks': self.todo_tasks,
+                'current_todo_task': self.current_todo_task
+            },
+            'subagent_creation_history': self.subagent_creation_history,
+            'exception': self.last_exception,
+            'environment': {
+                'model': self.model,
+                'max_tokens': self.max_tokens,
+                'workplace': self.workplace,
+                'platform': platform.platform(),
+                'system': platform.system(),
+                'python_version': platform.python_version()
+            }
         }
-        with open("agent_state.json", "w", encoding='utf-8') as f:
+
+        # 保存到文件
+        state_file = os.path.join(self.workplace, "agent_state.json")
+        with open(state_file, "w", encoding='utf-8') as f:
             json.dump(state, f, ensure_ascii=False, indent=2)
+
+        self.logger.info(f"Agent state saved to {state_file}")
 
     def _build_system_prompt(self) -> str:
         global SYSTEM_PROMPT_TEMPLATE
@@ -246,12 +326,13 @@ class Agent:
         # Run the agent loop until no more tool use
         return self._run_agent_loop()
 
-    def _handle_sub_agent_call(self, tool_input: dict) -> dict:
+    def _handle_sub_agent_call(self, tool_input: dict, block_id: str) -> dict:
         """
         处理 SubAgent 工具调用
 
         Args:
             tool_input: sub_agent 工具的输入参数
+            block_id: 工具调用的 block ID
 
         Returns:
             dict: SubAgent 执行结果
@@ -269,12 +350,30 @@ class Agent:
 
             self.logger.info(f"Starting sub-agent task: {task[:50]}...")
 
-            # 调用 sub_agent 函数
-            result = sub_agent(
+            # 生成唯一的 SubAgent ID
+            subagent_id = str(uuid.uuid4())
+
+            # 记录 SubAgent 创建历史（在记录前就记录，确保即使创建失败也能追踪）
+            self.subagent_creation_history.append({
+                'subagent_id': subagent_id,
+                'message_index': len(self.messages),  # 当前消息的索引
+                'task': task,
+                'created_at': datetime.datetime.now().isoformat()
+            })
+
+            # 创建 SubAgent
+            subagent = create_sub_agent(
                 task=task,
                 context=context,
-                parent_agent=self
+                parent_agent=self,
+                subagent_id=subagent_id
             )
+
+            # 执行 SubAgent
+            result = execute_sub_agent(subagent)
+
+            # 将 subagent_id 附加到结果中，供主 Agent 记录
+            result['subagent_id'] = subagent_id
 
             if result.get('success'):
                 self.logger.info("Sub-agent task completed successfully")
@@ -319,10 +418,12 @@ class Agent:
 
                     # 特殊处理 SubAgent 调用
                     if block.name == "sub_agent":
-                        tool_result = self._handle_sub_agent_call(block.input)
+                        tool_result = self._handle_sub_agent_call(block.input, block.id)
+                        subagent_id = tool_result.get('subagent_id')
                     else:
                         # Execute tool
                         tool_result = execute_tool(block.name, block.input)
+                        subagent_id = None
 
                     # 如果是 todo_create，将任务保存到 Agent 的 todo_tasks 中
                     if block.name == "todo_create" and tool_result.get('success'):
@@ -344,9 +445,14 @@ class Agent:
                                     break
 
                     # Convert result dict to JSON string for the API
+                    result_content = tool_result.copy()
+                    # 如果有 subagent_id，附加到结果中以便后续引用
+                    if subagent_id:
+                        result_content['_subagent_id'] = subagent_id
+
                     tool_results.append({
                         "tool_use_id": block.id,
-                        "content": json.dumps(tool_result, ensure_ascii=False)
+                        "content": json.dumps(result_content, ensure_ascii=False)
                     })
                 elif block.type == "text":
                     # 处理文本块，继续循环直到没有工具调用
@@ -358,7 +464,7 @@ class Agent:
                 "role": "assistant",
                 "content": response.content
             })
-
+        
             # If there were tool calls, add results to history and continue loop
             if has_tool_use:
                 for result in tool_results:

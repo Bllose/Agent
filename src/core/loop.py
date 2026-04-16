@@ -1,7 +1,9 @@
+import datetime
+import traceback
 from .agent import Agent
 from .logger import get_logger
 
-MAX_RETRY = 3
+MAX_RETRY = 1
 
 class AgentLoop:
     """Main Agent Loop for REPL interaction."""
@@ -26,9 +28,10 @@ class AgentLoop:
         while True:
             try:
                 if self.retry_count >= MAX_RETRY:
+                    self.logger.error("Maximum retry limit reached. Saving state and exiting.")
+                    print("Maximum retry limit reached. Saving state and exiting.")
                     self.agent.save_state()
-                    self.logger.error("Maximum retry limit reached. State saved. Exiting.")
-                    print("Maximum retry limit reached. State saved. Exiting.")
+                    print("State saved. Exiting.")
                     break
 
                 # Get user input
@@ -75,6 +78,14 @@ class AgentLoop:
                 self.logger.info("KeyboardInterrupt received")
                 print("\nUse 'exit' or 'quit' to leave.")
             except Exception as e:
+                # 存储异常信息到 agent
+                self.agent.last_exception = {
+                    'type': type(e).__name__,
+                    'message': str(e),
+                    'traceback': traceback.format_exc(),
+                    'timestamp': datetime.datetime.now().isoformat()
+                }
+
                 self.logger.error(f"Error processing message: {str(e)}", exc_info=True)
                 self.retry_count += 1
                 self.is_retrying = True
