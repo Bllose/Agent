@@ -1,83 +1,83 @@
-# Git 操作技能
+---
+name: git_operations
+description: Git version control operations and best practices
+---
 
-## 描述
-提供 Git 版本控制操作的指导和最佳实践，帮助用户高效地进行代码版本管理。
+# Git Operations
 
-## 使用场景
-当用户需要进行以下 Git 操作时：
-- 提交代码更改
-- 拉取或推送代码
-- 创建和管理分支
-- 处理合并冲突
-- 查看历史记录
+Use this skill when the user needs to:
+- Commit code changes
+- Pull or push code
+- Create or manage branches
+- Resolve merge conflicts
+- View git history
 
-## 指导
-作为 AI Agent，在协助用户进行 Git 操作时，请遵循以下指导：
+## Instructions
 
-### 基本原则
-- 在执行破坏性操作前，先检查当前状态（如是否有没有提交的更改）
-- 始终先确认操作的安全性，特别是涉及到历史重写的命令
-- 提供清晰的操作说明和预期结果
-- 使用合适的命令参数以提高操作效率
+### Basic Principles
+- Check current state before destructive operations
+- Always confirm operation safety, especially for history-rewriting commands
+- Provide clear operation descriptions and expected results
+- Use appropriate command parameters for efficiency
 
-### Commit 提交流程
-1. 查看当前状态：`git status`
-2. 查看具体更改：`git diff`（未暂存）或 `git diff --staged`（已暂存）
-3. 添加文件到暂存区：`git add <files>` 或 `git add .`（所有更改）
-4. 提交更改：`git commit -m "清晰的提交信息"`
-   - 提交信息应该简洁明了，描述做了什么和为什么
-   - 使用中文或英文根据项目风格
-   - 避免使用 "fix bug" 或 "update" 这种模糊的信息
+### Commit Workflow
+1. Check status: `git status`
+2. View changes: `git diff` (unstaged) or `git diff --staged` (staged)
+3. Stage files: `git add <files>` or `git add .` (all changes)
+4. Commit: `git commit -m "Clear commit message"`
+   - Commit messages should be concise and describe what and why
+   - Use Chinese or English based on project style
+   - Avoid vague messages like "fix bug" or "update"
 
-### Pull/Push 操作
-1. 拉取远程更改：
-   - `git pull`（自动合并）
-   - `git fetch` + `git merge`（更安全的两步操作）
-2. 推送本地更改：
-   - `git push`（推送当前分支）
-   - `git push origin <branch-name>`（推送到指定分支）
-3. 推送前确认：
-   - 确保本地分支是最新的
-   - 检查是否有冲突需要解决
-   - 确认提交信息是否合适
+### Pull/Push Operations
+1. Pull remote changes:
+   - `git pull` (auto merge)
+   - `git fetch` + `git merge` (safer two-step operation)
+2. Push local changes:
+   - `git push` (current branch)
+   - `git push origin <branch-name>` (specific branch)
+3. Before pushing:
+   - Ensure local branch is up to date
+   - Check for conflicts
+   - Verify commit messages
 
-### 分支管理
-1. 创建新分支：`git checkout -b <branch-name>`
-2. 切换分支：`git checkout <branch-name>` 或 `git switch <branch-name>`
-3. `git branch`：查看所有分支
-4. 删除分支：
-   - `git branch -d <branch-name>`（安全删除）
-   - `git branch -D <branch-name>`（强制删除）
-5. 合并分支：
-   - 先切换到目标分支：`git checkout <target-branch>`
-   - 执行合并：`git merge <source-branch>`
+### Branch Management
+1. Create new branch: `git checkout -b <branch-name>`
+2. Switch branch: `git checkout <branch-name>` or `git switch <branch-name>`
+3. `git branch`: View all branches
+4. Delete branch:
+   - `git branch -d <branch-name>` (safe delete)
+   - `git branch -D <branch-name>` (force delete)
+5. Merge branches:
+   - Switch to target: `git checkout <target-branch>`
+   - Execute merge: `git merge <source-branch>`
 
-### 冲突解决
-1. 检测冲突：Git 会标记冲突文件
-2. 查看冲突：`git status` 会显示冲突文件
-3. 手动解决冲突：编辑冲突文件，选择合适的内容
-4. 标记为已解决：`git add <resolved-files>`
-5. 完成合并：`git commit`
-6. 放弃合并：`git merge --abort`
+### Conflict Resolution
+1. Detect conflicts: Git marks conflicting files
+2. View conflicts: `git status` shows conflicting files
+3. Resolve manually: Edit conflict files, choose appropriate content
+4. Mark resolved: `git add <resolved-files>`
+5. Complete merge: `git commit`
+6. Abort merge: `git merge --abort`
 
-### 常用命令参考
-- `git log`：查看提交历史
-- `git log --oneline --graph --all`：图形化查看分支历史
-- `git reflog`：查看所有操作记录（包括被删除的提交）
-- `git stash`：暂存当前工作
-- `git stash pop`：恢复暂存的工作
-- `git reset --hard HEAD`：放弃所有本地更改（危险操作）
-- `git clean -fd`：删除未跟踪的文件（危险操作）
+### Common Commands Reference
+- `git log`: View commit history
+- `git log --oneline --graph --all`: Graphical branch history
+- `git reflog`: View all operation records (including deleted commits)
+- `git stash`: Stash current work
+- `git stash pop`: Restore stashed work
+- `git reset --hard HEAD`: Discard all local changes (DANGEROUS)
+- `git clean -fd`: Delete untracked files (DANGEROUS)
 
-### 注意事项
-- 不要在公共分支上执行 `git push --force`，除非非常清楚后果
-- 重要操作前建议先备份或创建新分支
-- 使用 `.gitignore` 文件忽略不需要版本控制的文件
-- 定期拉取远程更新以减少冲突概率
-- 学习使用 `git help <command>` 查看详细帮助
+### Important Notes
+- Never use `git push --force` on public branches unless you fully understand the consequences
+- Create backup or new branch before important operations
+- Use `.gitignore` to exclude files from version control
+- Regularly pull remote updates to reduce conflict probability
+- Use `git help <command>` for detailed help
 
-### 错误处理
-- 如果遇到 "detached HEAD" 状态，说明你处于一个未命名的提交上
-- 如果遇到 "merge conflict"，需要手动解决冲突
-- 如果遇到 "nothing to commit"，说明工作目录是干净的
-- 如果遇到 "rejected" 错误，通常需要先 pull 或使用强制推送
+### Error Handling
+- "detached HEAD": You're on an unnamed commit
+- "merge conflict": Manual resolution required
+- "nothing to commit": Working directory is clean
+- "rejected": Need to pull or use force push

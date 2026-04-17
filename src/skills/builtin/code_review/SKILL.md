@@ -1,81 +1,82 @@
-# 代码审查技能
+---
+name: code_review
+description: Code review guidance and best practices for quality checks and improvements
+---
 
-## 描述
-提供代码审查的指导和最佳实践，帮助用户进行有效的代码质量检查和改进。
+# Code Review
 
-## 使用场景
-当用户需要进行以下操作时：
-- 审查代码变更
-- 检查代码质量
-- 识别潜在问题
-- 提供改进建议
-- 检查代码风格一致性
+Use this skill when the user needs to:
+- Review code changes
+- Check code quality
+- Identify potential issues
+- Provide improvement suggestions
+- Check code style consistency
 
-## 指导
-作为 AI Agent，在协助用户进行代码审查时，请遵循以下指导：
+## Instructions
 
-### 审查原则
-- 客观公正，基于事实和最佳实践
-- 关注代码质量、可维护性和安全性
-- 提供建设性的反馈和改进建议
-- 考虑代码的业务逻辑和性能影响
-- 尊重原有代码风格，除非明显不合理
+### Review Principles
+- Be objective and fair, based on facts and best practices
+- Focus on code quality, maintainability, and security
+- Provide constructive feedback and improvement suggestions
+- Consider business logic and performance impact
+- Respect existing code style unless clearly unreasonable
 
-### 审查要点
-1. **正确性**
-   - 逻辑是否正确
-   - 边界条件是否处理
-   - 异常情况是否考虑
+### Review Points
 
-2. **可读性**
-   - 命名是否清晰
-   - 注释是否充分
-   - 代码结构是否清晰
+#### 1. Correctness
+- Logic correctness
+- Edge case handling
+- Exception handling
 
-3. **可维护性**
-   - 是否遵循 DRY 原则
-   - 函数是否职责单一
-   - 是否过度复杂
+#### 2. Readability
+- Clear naming conventions
+- Adequate comments
+- Clear code structure
 
-4. **安全性**
-   - 输入验证是否充分
-   - 是否有注入漏洞
-   - 敏感信息是否暴露
+#### 3. Maintainability
+- Follow DRY principle
+- Single responsibility functions
+- Avoid over-complexity
 
-5. **性能**
-   - 算法复杂度是否合理
-   - 是否有不必要的循环或计算
-   - 资源使用是否高效
+#### 4. Security
+- Input validation
+- Injection vulnerabilities
+- Sensitive data exposure
 
-### 审查流程
-1. 理解代码的目的和上下文
-2. 检查代码结构和组织
-3. 分析具体实现细节
-4. 识别潜在问题和改进点
-5. 提供具体的建议和示例
+#### 5. Performance
+- Reasonable algorithm complexity
+- Unnecessary loops or computations
+- Efficient resource usage
 
-### 反馈格式
-对于发现的问题，按以下格式提供反馈：
-- **问题描述**：清晰说明问题是什么
-- **影响**：说明问题可能带来的影响
-- **建议**：提供具体的改进建议
-- **示例**：如有必要，提供修改前后的代码对比
+### Review Process
+1. Understand the code's purpose and context
+2. Check code structure and organization
+3. Analyze specific implementation details
+4. Identify potential issues and improvements
+5. Provide specific suggestions and examples
 
-### 特殊关注点
-- Python：PEP 8 规范、类型提示、docstring
-- JavaScript：ES6+ 特性、异步处理、错误处理
-- 数据库查询：SQL 注入、性能优化、索引使用
-- API 设计：RESTful 规范、错误处理、版本控制
+### Feedback Format
+For issues found, provide feedback in this format:
+- **Problem Description**: Clearly explain what the issue is
+- **Impact**: Explain the potential impact of the issue
+- **Suggestion**: Provide specific improvement suggestions
+- **Example**: If necessary, provide before/after code comparison
 
-### 建设性反馈
-- 优先指出严重的功能性错误
-- 然后关注代码质量问题
-- 最后提及风格和改进建议
-- 对于好的实现也要给予肯定
+### Special Attention
+- **Python**: PEP 8 standards, type hints, docstrings
+- **JavaScript**: ES6+ features, async handling, error handling
+- **Database**: SQL injection, performance optimization, index usage
+- **API Design**: RESTful standards, error handling, versioning
 
-### 工具使用
-可以使用以下工具辅助审查：
-- 静态代码分析工具
-- 代码格式化工具
-- 测试覆盖率工具
-- 依赖检查工具
+### Constructive Feedback
+- Prioritize serious functional errors
+- Then address code quality issues
+- Finally mention style and improvement suggestions
+- Acknowledge good implementations
+
+### Tool Usage
+You can use these tools to assist in the review:
+- Static code analysis tools
+- Code formatting tools
+- Test coverage tools
+- Dependency checking tools

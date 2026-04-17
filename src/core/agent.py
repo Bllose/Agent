@@ -6,7 +6,7 @@ import uuid
 import traceback
 from anthropic import Anthropic
 
-from src.tools import get_all_tools, execute_tool
+from src.tools import get_all_tools, execute_tool, load_tool
 from src.tools.sub_agent import create_sub_agent, execute_sub_agent
 from src.core.logger import get_logger
 from src.core.monitor import AgentMonitor
@@ -204,15 +204,13 @@ class Agent:
             self._build_system_prompt()
         system_prompt_list.append(SYSTEM_PROMPT_TEMPLATE)
 
-        # 添加 SKILL 内容（如果有 SKILL）
-        skills_content = self.skill_manager.get_skills_content()
-        if skills_content:
+        # 添加 SKILL 摘要（如果有 SKILL）
+        skills_summary = self.skill_manager.get_skills_summary()
+        if skills_summary:
             system_prompt_list.append("\n")
             system_prompt_list.append(DYNAMIC_BOUNDARY)
             system_prompt_list.append("\n")
-            system_prompt_list.append("# Available SKILLs")
-            system_prompt_list.append("\n")
-            system_prompt_list.append(skills_content)
+            system_prompt_list.append(skills_summary)
 
         # 添加 todo 任务状态（如果有任务）
         if self.todo_tasks:
@@ -450,6 +448,9 @@ class Agent:
                 if block.type == "tool_use":
                     has_tool_use = True
 
+                    # 动态加载工具（如果还未加载）
+                    load_tool(block.name)
+
                     # 特殊处理 SubAgent 调用
                     if block.name == "sub_agent":
                         tool_result = self._handle_sub_agent_call(block.input, block.id)
@@ -459,24 +460,24 @@ class Agent:
                         tool_result = execute_tool(block.name, block.input)
                         subagent_id = None
 
-                    # 如果是 todo_create，将任务保存到 Agent 的 todo_tasks 中
-                    if block.name == "todo_create" and tool_result.get('success'):
-                        tasks = tool_result.get('tasks', [])
-                        self.todo_tasks.extend(tasks)
-                        self.logger.info(f"Added {len(tasks)} tasks to todo plan")
-
-                    # 如果是 todo_update，更新 Agent 内存中的任务状态
-                    if block.name == "todo_update" and tool_result.get('success'):
-                        task_id = block.input.get('task_id')
-                        if 'status' in block.input:
-                            new_status = block.input['status']
-                            # 更新内存中的任务状态
-                            for task in self.todo_tasks:
-                                if task.get('id') == task_id:
-                                    old_status = task.get('status')
-                                    task['status'] = new_status
-                                    self.logger.info(f"Task {task_id} status updated from {old_status} to {new_status}")
-                                    break
+                    # 处理 todo 工具的结果，同步到 Agent 的 todo_tasks 中
+                    if block.name == "todo" and tool_result.get('success'):
+                        action = block.input.get('action')
+                        if action == "create":
+                            tasks = tool_result.get('tasks', [])
+                            self.todo_tasks.extend(tasks)
+                            self.logger.info(f"Added {len(tasks)} tasks to todo plan")
+                        elif action == "update":
+                            task_id = block.input.get('task_id')
+                            if 'status' in block.input:
+                                new_status = block.input['status']
+                                # 更新内存中的任务状态
+                                for task in self.todo_tasks:
+                                    if task.get('id') == task_id:
+                                        old_status = task.get('status')
+                                        task['status'] = new_status
+                                        self.logger.info(f"Task {task_id} status updated from {old_status} to {new_status}")
+                                        break
 
                     # Convert result dict to JSON string for the API
                     result_content = tool_result.copy()
