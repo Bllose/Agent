@@ -9,6 +9,7 @@ from anthropic import Anthropic
 from src.tools import get_all_tools, execute_tool
 from src.tools.sub_agent import create_sub_agent, execute_sub_agent
 from src.core.logger import get_logger
+from src.core.monitor import AgentMonitor
 from src.skills import SkillManager
 
 DYNAMIC_BOUNDARY = "=== DYNAMIC_BOUNDARY ==="
@@ -82,6 +83,10 @@ class Agent:
 
         # 异常存储（用于状态保留）
         self.last_exception = None
+
+        # 初始化监控者
+        self.monitor = AgentMonitor()
+        self.monitor.set_messages_reference(self.messages)
 
         self.logger.info(f"Agent initialized with model: {model}, max_tokens: {max_tokens}")
 
@@ -331,14 +336,22 @@ class Agent:
         Returns:
             The Agent's response text
         """
+        # 生成对话 ID
+        conversation_id = str(uuid.uuid4())
+        self.monitor.start_conversation(conversation_id)
+
         # Add user message to history
         self.messages.append({
             "role": "user",
             "content": user_message
         })
 
-        # Run the agent loop until no more tool use
-        return self._run_agent_loop()
+        try:
+            # Run the agent loop until no more tool use
+            result = self._run_agent_loop()
+            return result
+        finally:
+            self.monitor.end_conversation()
 
     def _handle_sub_agent_call(self, tool_input: dict, block_id: str) -> dict:
         """
@@ -421,6 +434,13 @@ class Agent:
                 tools=self.tools,
                 max_tokens=self.max_tokens
             )
+
+            # 记录 token 使用情况
+            if hasattr(response, 'usage'):
+                self.monitor.record_token_usage({
+                    'input_tokens': response.usage.input_tokens,
+                    'output_tokens': response.usage.output_tokens
+                })
 
             # Check if response contains tool_use
             has_tool_use = False
